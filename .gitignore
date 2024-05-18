@@ -2,8 +2,10 @@
 
 **/datasets/*
 !**/datasets/*.sh
+**/data/*
 
 **/build/*
 
 *.c
 *.pyd
+*.pth
