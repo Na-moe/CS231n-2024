@@ -38,7 +38,10 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        div_term = torch.arange(0, embed_dim, 2).float() * -(math.log(10000.0) / embed_dim)
+        positions = torch.arange(0, max_len).float().unsqueeze(1)
+        pe[0, :, 0::2] = torch.sin(positions * torch.exp(div_term))
+        pe[0, :, 1::2] = torch.cos(positions * torch.exp(div_term))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +73,8 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = x + self.pe[:, :S, :].to(x.device)
+        output = self.dropout(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -165,8 +169,21 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        H, E_H = self.n_head, self.head_dim
 
+        Q = self.query(query).view(N, S, H, E_H).permute(0, 2, 1, 3)
+        K = self.key(key).view(N, T, H, E_H).permute(0, 2, 3, 1)
+        V = self.value(value).view(N, T, H, E_H).permute(0, 2, 1, 3)
+
+        attn = torch.matmul(Q, K) / math.sqrt(E_H)
+        if attn_mask is not None:
+            attn = attn.masked_fill(attn_mask == 0, float('-inf'))
+        attn = F.softmax(attn, dim=-1)
+        attn = self.attn_drop(attn)
+
+        output = torch.matmul(attn, V).permute(0, 2, 1, 3).contiguous().view(N, S, E)
+        output = self.proj(output)
+        
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
