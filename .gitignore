@@ -2,3 +2,8 @@
 
 **/datasets/*
 !**/datasets/*.sh
+
+**/build/*
+
+*.c
+*.pyd
