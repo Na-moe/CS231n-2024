@@ -148,7 +148,27 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        h0, cache_affine = affine_forward(features, W_proj, b_proj)
+        word_vectors, cache_embed = word_embedding_forward(captions_in, W_embed)
+        if self.cell_type == "rnn":
+            h, cache_rnn = rnn_forward(word_vectors, h0, Wx, Wh, b)
+        elif self.cell_type == "lstm":
+            h, cache_lstm = lstm_forward(word_vectors, h0, Wx, Wh, b)
+        else:
+            raise ValueError("Invalid cell_type")
+        scores, cache_temporal_affine = temporal_affine_forward(h, W_vocab, b_vocab)
+
+        loss, dscores = temporal_softmax_loss(scores, captions_out, mask)
+
+        dh, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dscores, cache_temporal_affine)
+        if self.cell_type == "rnn":
+            dword_vectors, dh0, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dh, cache_rnn)
+        elif self.cell_type == "lstm":
+            dword_vectors, dh0, grads["Wx"], grads["Wh"], grads["b"] = lstm_backward(dh, cache_lstm)
+        else:
+            raise ValueError("Invalid cell_type")
+        grads["W_embed"] = word_embedding_backward(dword_vectors, cache_embed)
+        _, grads["W_proj"], grads["b_proj"] = affine_backward(dh0, cache_affine)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -216,7 +236,19 @@ class CaptioningRNN:
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        h, _ = affine_forward(features, W_proj, b_proj)
+        c = np.zeros_like(h) if self.cell_type == "lstm" else None
+        captions[:, 0] = self._start
+        for t in range(1, max_length):
+            word_vectors, _ = word_embedding_forward(captions[:, t-1], W_embed)
+            if self.cell_type == "rnn":
+                h, _ = rnn_step_forward(word_vectors, h, Wx, Wh, b)
+            elif self.cell_type == "lstm":
+                h, c, _ = lstm_step_forward(word_vectors, h, c, Wx, Wh, b)
+            else:
+                raise ValueError("Invalid cell_type")
+            scores, _ = affine_forward(h, W_vocab, b_vocab)
+            captions[:, t] = np.argmax(scores, axis=1)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
