@@ -167,10 +167,14 @@ class FullyConnectedNet(object):
         for i in range(1, self.num_layers):
             W = self.params[f'W{i}']
             b = self.params[f'b{i}']
-            if self.normalization:
+            if self.normalization == 'batchnorm':
                 gamma = self.params[f'gamma{i}']
                 beta = self.params[f'beta{i}']
                 out, cache = affine_bn_relu_forward(out, W, b, gamma, beta, self.bn_params[i-1])
+            elif self.normalization == 'layernorm':
+                gamma = self.params[f'gamma{i}']
+                beta = self.params[f'beta{i}']
+                out, cache = affine_ln_relu_forward(out, W, b, gamma, beta, self.bn_params[i-1])
             else:
                 out, cache = affine_relu_forward(out, W, b)
             caches.append(cache)
@@ -213,8 +217,12 @@ class FullyConnectedNet(object):
         grads[f'W{self.num_layers}'] = dW + self.reg * self.params[f'W{self.num_layers}']
         grads[f'b{self.num_layers}'] = db
         for i in range(self.num_layers-1, 0, -1):
-            if self.normalization:
+            if self.normalization == 'batchnorm':
                 dout, dW, db, dgamma, dbeta = affine_bn_relu_backward(dout, caches.pop())
+                grads[f'gamma{i}'] = dgamma
+                grads[f'beta{i}'] = dbeta
+            elif self.normalization == 'layernorm':
+                dout, dW, db, dgamma, dbeta = affine_ln_relu_backward(dout, caches.pop())
                 grads[f'gamma{i}'] = dgamma
                 grads[f'beta{i}'] = dbeta
             else:
